@@ -7,6 +7,9 @@ public class Length {
     private final double value;
     private final LengthUnit unit;
 
+    private static final double EPSILON = 1e-6;
+
+    // Enum with conversion factors (base unit = inches)
     public enum LengthUnit {
         FEET(12.0),
         INCHES(1.0),
@@ -19,35 +22,65 @@ public class Length {
             this.toInches = toInches;
         }
 
-        public double toBase(double value) {
-            return value * toInches;
+        public double getConversionFactor() {
+            return toInches;
         }
     }
 
+    // Constructor
     public Length(double value, LengthUnit unit) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null");
+        }
+        if (!Double.isFinite(value)) {
+            throw new IllegalArgumentException("Invalid value");
         }
         this.value = value;
         this.unit = unit;
     }
 
-    private double toBaseUnit() {
-        return unit.toBase(value);
+    // Convert to base unit (inches)
+    private double convertToBaseUnit() {
+        return value * unit.getConversionFactor();
     }
 
+    // Static conversion API (UC5 requirement)
+    public static double convert(double value, LengthUnit from, LengthUnit to) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("Units cannot be null");
+        }
+        if (!Double.isFinite(value)) {
+            throw new IllegalArgumentException("Invalid value");
+        }
+
+        double base = value * from.getConversionFactor();
+        return base / to.getConversionFactor();
+    }
+
+    // Instance conversion
+    public Length convertTo(LengthUnit targetUnit) {
+        double newValue = convert(this.value, this.unit, targetUnit);
+        return new Length(newValue, targetUnit);
+    }
+
+    // Equality with tolerance
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-        Length other = (Length) obj;
+        Length other = (Length) o;
 
-        return Double.compare(this.toBaseUnit(), other.toBaseUnit()) == 0;
+        return Math.abs(this.convertToBaseUnit() - other.convertToBaseUnit()) < EPSILON;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toBaseUnit());
+        return Objects.hash(convertToBaseUnit());
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%.2f %s", value, unit);
     }
 }
